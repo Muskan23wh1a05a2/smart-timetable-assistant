@@ -43,7 +43,7 @@ git init
 git add .
 git commit -m "Week 1-2: Foundation - calendar integration + class schedule"
 git branch -M main
-git remote add origin https://github.com/<Muskan23wh1a05a2>/student-calendar-agent.git
+git remote add origin https://github.com/<your-username>/student-calendar-agent.git
 git push -u origin main
 ```
 
@@ -285,3 +285,138 @@ New modules added this milestone:
       View (monthly/weekly/daily) → Add Event with conflict detection →
       Assignments/Exams with priorities → AI Assistant chat → Export to .ics
 - [ ] Milestone: Production-ready academic scheduling application 🎉
+
+---
+
+## 📦 Final Submission Checklist
+
+This project includes everything needed for the final submission:
+
+### 1. GitHub Repository
+- All source files (`app.py`, `agent.py`, `*_store.py`, `conflict_detector.py`,
+  `calendar_view.py`, `export_utils.py`, `validators.py`, `reminder.py`,
+  `academic_calendar.py`)
+- `requirements.txt`
+- `README.md` (this file) — setup, API key configuration, feature walkthrough
+- `ARCHITECTURE.md` — scheduling algorithms & calendar integration flow
+- `.gitignore` — excludes `credentials.json`, `token.json`, and all local
+  data JSON files (privacy protection)
+
+Push everything (see GitHub upload steps earlier in this README), and
+**double-check `credentials.json` / `token.json` are NOT in the repo**.
+
+### 2. API Key Configuration (for reviewers)
+Document these clearly (already covered above, summarized here):
+- **Google Calendar**: OAuth client ID from Google Cloud Console →
+  `credentials.json` (gitignored; reviewers create their own)
+- **OpenAI** (for AI Assistant tab): API key entered in-app, session-only
+- **Gmail App Password** (for email reminders): generated via Google Account
+  → App Passwords, entered in-app, session-only
+
+### 3. Demo Video (5-10 minutes)
+Suggested structure:
+1. **Intro (0:30)** — what the app does, tech stack (Streamlit + LangGraph +
+   Google Calendar API)
+2. **Dashboard (1:00)** — show overview, deadline warnings, conflict panel
+3. **Calendar Views (1:00)** — Monthly / Weekly / Daily
+4. **Class Schedule & Exams (1:30)** — add a Lecture/Lab session, add an exam,
+   generate a study plan, push study sessions to Google Calendar
+5. **Assignments (1:00)** — add assignments with priority levels, show sorted
+   deadline list, send an email reminder
+6. **Conflict Detection (1:00)** — try adding an overlapping event, show the
+   warning, then resolve it
+7. **AI Assistant (1:30)** — natural language requests: "find free time
+   tomorrow", "schedule a study session Friday 4-6pm", "what exams do I have
+   coming up"
+8. **Export (0:30)** — download `.ics`, import into Google Calendar live
+
+### 4. Architecture Documentation
+See `ARCHITECTURE.md` for:
+- System architecture diagram
+- Data storage design
+- Google Calendar integration flow (OAuth, read/write, error handling)
+- Scheduling algorithms (conflict detection, free-slot finder, study time
+  allocation)
+- AI agent design (LangGraph ReAct agent + shared tool modules)
+- Privacy & data protection measures
+
+### 5. Live Deployment
+Deploy to **Streamlit Community Cloud**:
+1. Push the repo to GitHub (without secrets)
+2. Go to https://share.streamlit.io → New app → select repo, branch `main`,
+   file `app.py`
+3. **Note on Google OAuth in the cloud**: the current OAuth flow
+   (`run_local_server`) requires a local browser, which doesn't work on
+   Streamlit Cloud. For the live deployment URL:
+   - Either demo the Class Schedule, Assignments, Exams, Academic Calendar,
+     Calendar View, and Export tabs (which work fully without Google sign-in)
+   - Or implement the OAuth **web flow** with a redirect URI pointing at your
+     deployed app's URL (a good "future work" item to mention in your demo)
+4. For the AI Assistant on the deployed app, use **Streamlit secrets**
+   (Settings → Secrets) to optionally pre-fill an OpenAI key, or let users
+   enter their own as the app already supports
+
+### Sample Scheduling Scenarios to Demo Live
+- "I have a Data Structures lecture Mon/Wed/Fri 9-10am and a lab Thursday
+  2-4pm — add both."
+- "Add my DBMS exam for next Friday and suggest a study plan."
+- "Find me 2 hours of free time tomorrow."
+- "Add an assignment: ML project report, due in 5 days, high priority."
+- Try creating an event that overlaps a class — confirm the conflict warning
+  appears, then choose to reschedule or override.
+
+---
+
+## ☁️ Enabling Google Calendar on Cloud Deployments (Web OAuth)
+
+The local app uses a "Desktop app" OAuth flow (opens a browser on your
+machine). That doesn't work on Streamlit Cloud / Hugging Face Spaces. To
+enable full Google Calendar sign-in on your **deployed** app, set up a
+**Web OAuth client** instead:
+
+### 1. Create a Web OAuth Client in Google Cloud Console
+1. Go to https://console.cloud.google.com/ → your project → **APIs & Services
+   → Credentials**
+2. Click **Create Credentials → OAuth client ID**
+3. Application type: **Web application**
+4. Under **Authorized redirect URIs**, add your deployed app's exact URL,
+   e.g.:
+   - `https://muskanmuskii-smarttimetable.hf.space`
+   - (Streamlit Cloud: `https://<your-app>.streamlit.app`)
+5. Click **Create**. Copy the **Client ID** and **Client Secret**.
+
+### 2. Add Secrets to Your Deployment
+
+**Hugging Face Spaces:**
+- Go to your Space → **Settings → Variables and secrets**
+- Add these as **Secrets**:
+  - `GOOGLE_CLIENT_ID` = your client ID
+  - `GOOGLE_CLIENT_SECRET` = your client secret
+  - `OAUTH_REDIRECT_URI` = your Space's URL (must exactly match step 1.4,
+    no trailing slash)
+
+**Streamlit Cloud:**
+- App → Settings → Secrets, add (TOML format):
+```toml
+GOOGLE_CLIENT_ID = "your-client-id"
+GOOGLE_CLIENT_SECRET = "your-client-secret"
+OAUTH_REDIRECT_URI = "https://your-app.streamlit.app"
+```
+
+### 3. How It Works
+- If `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `OAUTH_REDIRECT_URI` are
+  all set, the sidebar shows a **"Connect to Google Calendar"** link that
+  sends the user to Google's consent screen, then redirects back to your app
+  with an authorization code.
+- The app exchanges that code for credentials and stores them in
+  `st.session_state` (not on disk) — so each user's session has its own
+  Google Calendar connection, and nothing is shared between users.
+- If these secrets are **not** set, the app falls back to the local Desktop
+  OAuth flow (using `credentials.json` / `token.json`) — this is what you
+  use for local development.
+
+### Notes
+- Each browser session re-authenticates (credentials aren't persisted across
+  restarts) — acceptable for a class project demo.
+- The OAuth consent screen must list your Google account as a **test user**
+  (or the app must be published) under **OAuth consent screen** settings.
